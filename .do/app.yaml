@@ -1,0 +1,32 @@
+# DigitalOcean App Platform spec (alternative to the Droplet). Set secrets in the App's settings, not here.
+name: family-finance
+region: nyc
+services:
+  - name: web
+    dockerfile_path: Dockerfile
+    github:
+      repo: OWNER/REPO          # TODO: set to the private repo
+      branch: main
+      deploy_on_push: true
+    http_port: 3000
+    instance_size_slug: apps-s-1vcpu-1gb
+    instance_count: 1
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      - { key: NODE_ENV, value: production, scope: RUN_TIME }
+      - { key: AUTH_TEST_MODE, value: "false", scope: RUN_TIME }
+      - { key: DEMO_MODE, value: "false", scope: RUN_TIME }
+      - { key: CUE_FLOW_AUTHORIZED, value: "false", scope: RUN_TIME }
+      - { key: HOUSEHOLD_NAME, value: "Family Finance", scope: RUN_TIME }
+      - { key: AUTH_URL, scope: RUN_TIME, value: "https://YOUR-DOMAIN" }
+      - { key: AUTH_SECRET, scope: RUN_TIME, type: SECRET }
+      - { key: AUTH_GOOGLE_ID, scope: RUN_TIME, type: SECRET }
+      - { key: AUTH_GOOGLE_SECRET, scope: RUN_TIME, type: SECRET }
+      - { key: HOUSEHOLD_ADMIN_EMAIL, scope: RUN_TIME, type: SECRET }
+databases:
+  - name: db
+    engine: PG
+    version: "16"
+    production: true

@@ -1,0 +1,1 @@
+ALTER TABLE "income_expectation" ADD COLUMN "anchor_date" date;
