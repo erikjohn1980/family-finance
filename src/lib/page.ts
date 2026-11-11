@@ -31,7 +31,7 @@ export async function resolveFilters(userId: string, sp: Record<string, string |
 }
 
 export const SCOPE_LABEL: Record<ScopeFilter, string> = {
-  default: "Household + included business",
+  default: "Household, plus business cash you include",
   household: "Household only",
   business: "Business only",
   trust: "Trust",

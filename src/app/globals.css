@@ -271,11 +271,11 @@ a.row:hover { background: var(--elevated-2); }
   .topbar-actions .btn { flex: 1 1 auto; min-height: 44px; }
   .content { padding: 16px; }
   .nav-link, .btn, input, select { min-height: 44px; }
-  .row { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
-  .row > :nth-child(1) { grid-column: 1; grid-row: 2; font-size: 0.8rem; color: var(--muted); }
-  .row > :nth-child(2) { grid-column: 1; grid-row: 1; }
-  .row > :nth-child(3), .row > :nth-child(4) { grid-column: 1 / -1; font-size: 0.8rem; }
-  .row > .amt { grid-column: 2; grid-row: 1 / span 2; }
+  .row-tx { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .row-tx > :nth-child(1) { grid-column: 1; grid-row: 2; font-size: 0.8rem; color: var(--muted); }
+  .row-tx > :nth-child(2) { grid-column: 1; grid-row: 1; }
+  .row-tx > :nth-child(3), .row-tx > :nth-child(4) { grid-column: 1 / -1; font-size: 0.8rem; }
+  .row-tx > .amt { grid-column: 2; grid-row: 1 / span 2; }
   .row-head { display: none; }
   .pie-wrap { grid-template-columns: 1fr; justify-items: center; }
   .pie-wrap .legend { width: 100%; }
@@ -294,3 +294,131 @@ a.cell-main:hover, .cell-main a:hover, .card-head a:hover { text-decoration: und
   .topbar-actions .btn { flex: 1 1 0; padding: 8px 10px; font-size: 0.9rem; }
 }
 @media (max-width: 520px) { .hide-sm { display: none; } }
+
+/* ================= Mobile pass ================= */
+.only-mobile { display: none !important; }
+.tabbar { display: none; }
+.nav-backdrop { display: none; }
+.toast { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.toast-undo { flex: none; background: transparent; border: 0; color: var(--accent); font: inherit; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; min-height: 44px; padding: 0 6px; cursor: pointer; }
+.toast-undo[disabled] { opacity: 0.6; }
+
+/* Needs-category queue */
+.stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.stat { display: flex; align-items: baseline; gap: 10px; background: var(--elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; }
+.stat-value { font-size: 1.6rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.stat-label { color: var(--muted); font-size: 0.88rem; }
+.inbox-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); align-items: start; }
+.inbox-card { background: var(--elevated); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.inbox-card[aria-busy="true"] { opacity: 0.6; }
+.inbox-head { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; text-decoration: none; color: inherit; min-height: 44px; }
+.inbox-avatar { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 700; background: var(--elevated-2); border: 1px solid var(--border); color: var(--accent); }
+.inbox-main { display: flex; flex-direction: column; min-width: 0; }
+.inbox-merchant { font-weight: 650; font-size: 1.02rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox-meta { color: var(--muted); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox-pending { color: var(--pend); }
+.inbox-amount { font-weight: 750; font-size: 1.1rem; }
+.inbox-amount.pos { color: var(--ok); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { min-height: 40px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-sunken); color: var(--text); font: inherit; font-weight: 550; cursor: pointer; transition: transform 0.12s ease; }
+.chip:hover { border-color: var(--accent); }
+.chip:active { transform: scale(0.96); }
+.chip[disabled] { opacity: 0.6; }
+.chip-suggested { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.chip-more { border-style: dashed; color: var(--muted); background: transparent; }
+.inbox-more { border-top: 1px solid var(--border); padding-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .chip { transition: none; } }
+
+@media (max-width: 900px) {
+  .only-mobile { display: inline-flex !important; }
+  a.nav-link.only-mobile { display: flex !important; }
+  /* Slim top bar: title + search icon. Primary actions live in the tab bar. */
+  .topbar { position: sticky; top: 0; flex-wrap: nowrap; padding: 8px 16px; padding-top: max(8px, env(safe-area-inset-top)); min-height: 52px; }
+  .topbar-actions { display: none; }
+  .crumbs > span { display: none; }
+  .crumbs strong { font-size: 1.05rem; }
+  .topbar-search { margin-left: auto; min-width: 44px; padding: 0; }
+  .content { padding: 14px 14px calc(96px + env(safe-area-inset-bottom)); gap: 14px; }
+  /* Bottom tabs */
+  .tabbar {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    background: color-mix(in srgb, var(--bg-sunken) 94%, transparent); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border); padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  .tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.7rem; font-weight: 600; text-decoration: none; cursor: pointer; border-radius: 12px; min-width: 0; }
+  .tab[aria-current="page"] { color: var(--accent); }
+  .tab-icon { position: relative; display: grid; place-items: center; width: 44px; height: 26px; }
+  .tab-icon .nav-icon, .tab-plus .nav-icon { width: 22px; height: 22px; }
+  .tab-badge { position: absolute; top: -4px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--pend); color: #1a1200; font-size: 0.68rem; font-weight: 800; display: grid; place-items: center; }
+  .tab-plus { width: 44px; height: 32px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: var(--accent-text); }
+  .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toast-region { left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); max-width: none; }
+  /* Drawer */
+  .sidebar { z-index: 70; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  .sidebar[data-open="true"] { box-shadow: none; }
+  .nav-backdrop { display: block; position: fixed; inset: 0; z-index: 65; background: rgba(0, 0, 0, 0.5); border: 0; padding: 0; }
+  /* Type and controls: 16px inputs stop iOS from zooming on focus */
+  input, select, textarea { font-size: 16px; }
+  h1 { font-size: 1.3rem; }
+  .page-head { align-items: stretch; flex-direction: column; gap: 10px; }
+  .page-head .sub { font-size: 0.9rem; }
+  .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .filters label { min-width: 0; }
+  .filters > .form-actions, .filters > label.inline { grid-column: 1 / -1; }
+  .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-grid > label[style] { grid-column: 1 / -1; }
+  .form-actions .btn { flex: 1 1 auto; }
+  /* Cards */
+  .card { padding: 14px; border-radius: 16px; }
+  .grid { gap: 12px; }
+  .grid-kpi { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .grid-kpi .card { padding: 12px; }
+  .grid-kpi .card-head { margin-bottom: 4px; }
+  .grid-kpi .card-head a { display: none; }
+  .grid-kpi .card-title { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+  .kpi-value { font-size: 1.45rem; margin: 2px 0; }
+  .kpi-sub { font-size: 0.78rem; }
+  .grid-2, .grid-3, .board { grid-template-columns: minmax(0, 1fr); }
+  .stat-strip { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .stat { padding: 10px 14px; }
+  .chip { min-height: 44px; padding: 8px 16px; }
+  .banner { padding: 8px 12px; font-size: 0.85rem; gap: 6px; }
+  /* Transaction rows: merchant + amount on top, details beneath */
+  .row { padding: 12px 4px; min-height: 56px; }
+  .row-tx > :nth-child(2) { font-weight: 600; white-space: normal; }
+  .row-tx .amt { font-size: 1rem; align-self: start; }
+  .legend-item { font-size: 0.85rem; }
+  .skip-link:focus { top: max(8px, env(safe-area-inset-top)); }
+}
+@media (max-width: 360px) {
+  .form-grid, .filters { grid-template-columns: minmax(0, 1fr); }
+  .tab-label { font-size: 0.64rem; }
+}
+/* Installed to the home screen: no browser chrome, so respect the notch. */
+@media (display-mode: standalone) { .topbar { padding-top: max(10px, env(safe-area-inset-top)); } }
+.search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; max-width: 520px; }
+@media (max-width: 900px) {
+  .hide-md, .members-row { display: none !important; }
+  /* The top bar already shows the screen name. Keep the h1 for screen readers. */
+  .page-head h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .page-head .sub { margin-top: 0; }
+  .banner-demo { flex-wrap: nowrap; padding: 6px 12px; font-size: 0.8rem; }
+}
+@media (max-width: 900px) {
+  /* Rows with custom desktop columns collapse to the same two-column phone layout. */
+  .row-tx { grid-template-columns: minmax(0, 1fr) auto !important; }
+  /* Other list rows simply wrap: first item takes the line, the rest flow after it. */
+  .row:not(.row-tx) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+  .row:not(.row-tx) > :first-child { flex: 1 1 55%; min-width: 0; }
+  .row:not(.row-tx) > form, .row:not(.row-tx) > details { flex: 1 1 100%; }
+  .row:not(.row-tx) > .cell-main { white-space: normal; }
+  .kv { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
+  .kv dd { margin-bottom: 8px; }
+}
+
+label { min-width: 0; overflow-wrap: anywhere; }
+.chart-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 900px) {
+  .form-grid > label:only-child { grid-column: 1 / -1; }
+  .chart-scroll .chart { min-width: 520px; }
+}

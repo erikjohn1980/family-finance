@@ -41,15 +41,21 @@ export function Submit({ children, className = "btn btn-primary", pendingText = 
   );
 }
 
-/** Page-level status region: action results stay visible even when the form's row disappears. */
+export type ToastDetail = { text: string; error?: boolean; undo?: () => Promise<ActionResult> };
+export function toast(detail: ToastDetail) {
+  window.dispatchEvent(new CustomEvent<ToastDetail>("ff:toast", { detail }));
+}
+
+/** Page-level status region: action results stay visible even when the form's row disappears. Supports Undo. */
 export function Toaster() {
-  const [msg, setMsg] = useState<{ text: string; error: boolean; id: number } | null>(null);
+  const [msg, setMsg] = useState<(ToastDetail & { id: number }) | null>(null);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     const on = (e: Event) => {
-      const d = (e as CustomEvent<{ text: string; error: boolean }>).detail;
-      const id = Date.now();
+      const d = (e as CustomEvent<ToastDetail>).detail;
+      const id = Date.now() + Math.random();
       setMsg({ ...d, id });
-      setTimeout(() => setMsg((m) => (m?.id === id ? null : m)), 6000);
+      setTimeout(() => setMsg((m) => (m?.id === id ? null : m)), d.undo ? 8000 : 6000);
     };
     window.addEventListener("ff:toast", on);
     return () => window.removeEventListener("ff:toast", on);
@@ -58,7 +64,22 @@ export function Toaster() {
     <div className="toast-region" role="status" aria-live="polite" aria-atomic="true">
       {msg ? (
         <div className={`toast ${msg.error ? "toast-err" : ""}`} data-testid="toast">
-          {msg.text}
+          <span>{msg.text}</span>
+          {msg.undo ? (
+            <button
+              type="button"
+              className="toast-undo"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                const r = await msg.undo!();
+                setBusy(false);
+                toast(r?.error ? { text: r.error, error: true } : { text: r?.ok ?? "Undone" });
+              }}
+            >
+              {busy ? "Undoing…" : "Undo"}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -1,8 +1,7 @@
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import type { DB } from "@/db";
-import { categories, householdMembers, households, invites, netWorthManualAssets } from "@/db/schema";
+import { categories, householdMembers, households, invites } from "@/db/schema";
 import { audit } from "./audit";
-import { KATAPULT_STAKE_KEY } from "./policy";
 
 /** PROPOSED default categories — flagged `proposed` until the owner approves or edits them. No limits are set. */
 export const DEFAULT_CATEGORIES: { group: string; name: string; kind: "expense" | "income" | "transfer" | "card_payment" | "excluded" }[] = [
@@ -42,7 +41,7 @@ export async function getHousehold(db: DB) {
   return h ?? null;
 }
 
-/** Create the single household (idempotent) with proposed defaults and the empty 51% stake slot. */
+/** Create the single household (idempotent) with proposed defaults. */
 export async function bootstrapHousehold(db: DB, adminUserId: string) {
   return db.transaction(async (tx) => {
     const [existing] = await tx.select().from(households).limit(1);
@@ -53,13 +52,6 @@ export async function bootstrapHousehold(db: DB, adminUserId: string) {
       .returning();
     await tx.insert(householdMembers).values({ householdId: h.id, userId: adminUserId, role: "admin" });
     await tx.insert(categories).values(DEFAULT_CATEGORIES.map((c) => ({ ...c, householdId: h.id, proposed: true })));
-    await tx.insert(netWorthManualAssets).values({
-      householdId: h.id,
-      label: "51% share of cleared Katapult cash",
-      amountCents: null,
-      notes: "Owner-supplied value only. Not linked to any Katapult account.",
-      systemKey: KATAPULT_STAKE_KEY,
-    });
     await audit(tx, { householdId: h.id, actorId: adminUserId, entity: "household", entityId: h.id, action: "bootstrap", after: { name: h.name } });
     return h;
   });

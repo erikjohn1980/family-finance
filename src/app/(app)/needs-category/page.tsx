@@ -2,9 +2,12 @@ import Link from "next/link";
 import { categorizeBankTx, categorizeManualTx } from "@/app/actions";
 import { ActionForm, Submit } from "@/components/forms";
 import { FilterBar } from "@/components/filter-bar";
-import { Card, Empty, Money, PageHead, Pill } from "@/components/ui";
+import { InboxCard } from "@/components/inbox-card";
+import { Empty, PageHead } from "@/components/ui";
 import { bankPendingCount, inScope, needsCategory } from "@/lib/calc/ledger";
+import { buildSuggestIndex, chipsFor } from "@/lib/calc/suggest";
 import { shortDate } from "@/lib/dates";
+import { formatCents } from "@/lib/money";
 import { ledgerFor, pageMember, resolveFilters } from "@/lib/page";
 
 export const metadata = { title: "Needs category" };
@@ -17,51 +20,55 @@ export default async function NeedsCategory({ searchParams }: { searchParams: Pr
   const queue = needsCategory(lines);
   const pendingTotal = bankPendingCount(lines);
   const acct = new Map(data.lines.map((l) => [l.txId, l.accountId]));
-  const acctName = new Map(data.accounts.map((a) => [a.id, a.name]));
+  const accounts = new Map(data.accounts.map((a) => [a.id, a]));
+  const idx = buildSuggestIndex(data.lines, data.categoryLites);
+  const total = queue.reduce((s, n) => s + Math.abs(n.amountCents), 0);
 
   return (
     <>
-      <PageHead title="Needs category" sub="Rows without a household category, from any month. This queue is independent of bank-pending settlement.">
+      <PageHead title="Needs category" sub="Tap a category to file each item. This queue is separate from bank-pending settlement.">
         <FilterBar month={f.month} scope={f.scope} showMonth={false} />
       </PageHead>
-      <div className="grid grid-kpi">
-        <Card title="Needs category">
-          <div className="kpi-value" data-testid="needs-count">
+      <div className="stat-strip">
+        <div className="stat">
+          <span className="stat-value" data-testid="needs-count">
             {queue.length}
-          </div>
-          <p className="kpi-sub">No override, carried override, or confirmed rule</p>
-        </Card>
-        <Card title="Bank-pending (separate)">
-          <div className="kpi-value" data-testid="pending-count">
+          </span>
+          <span className="stat-label">need a category · {formatCents(total)}</span>
+        </div>
+        <div className="stat">
+          <span className="stat-value" data-testid="pending-count">
             {pendingTotal}
-          </div>
-          <p className="kpi-sub">Not yet settled by the bank; may already have a category</p>
-        </Card>
+          </span>
+          <span className="stat-label">bank-pending (separate; may already have a category)</span>
+        </div>
       </div>
-      <Card>
-        {queue.length ? (
-          <ul className="list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-            {queue.map((n) => (
-              <li key={`${n.source}:${n.txId}`} className="row" style={{ gridTemplateColumns: "100px minmax(0,1.4fr) 110px minmax(0,2fr)" }}>
-                <span className="small muted">{shortDate(n.date)}</span>
-                <span className="cell-main">
-                  <Link href={`/transactions/${n.source}/${n.txId}`}>{n.merchant}</Link>
-                  <span className="small muted"> · {acctName.get(acct.get(n.txId) ?? "") ?? (n.source === "manual" ? "Manual" : "")}</span>
-                  {n.pending ? (
-                    <>
-                      {" "}
-                      <Pill tone="pend">Bank-pending</Pill>
-                    </>
-                  ) : null}
-                </span>
-                <Money className="amt" cents={n.amountCents} sign />
+      {queue.length ? (
+        <ul className="inbox-list">
+          {queue.map((n) => {
+            const a = accounts.get(acct.get(n.txId) ?? "");
+            return (
+              <InboxCard
+                key={`${n.source}:${n.txId}`}
+                item={{
+                  source: n.source,
+                  txId: n.txId,
+                  merchant: n.merchant,
+                  dateLabel: shortDate(n.date),
+                  amountLabel: formatCents(Math.abs(n.amountCents), { sign: n.amountCents > 0 }),
+                  inflow: n.amountCents > 0,
+                  pending: n.pending,
+                  accountLabel: a ? `${a.name}${a.maskLast4 ? ` ••${a.maskLast4}` : ""}` : n.source === "manual" ? "Manual entry" : "",
+                }}
+                chips={chipsFor(n, idx)}
+              >
                 <ActionForm action={n.source === "bank" ? categorizeBankTx : categorizeManualTx} className="form-actions" aria-label={`Categorize ${n.merchant}`}>
                   <input type="hidden" name="txId" value={n.txId} />
                   <label className="sr-only" htmlFor={`cat-${n.txId}`}>
                     Category for {n.merchant}
                   </label>
                   <select id={`cat-${n.txId}`} name="categoryId" required defaultValue="" style={{ flex: "1 1 180px", width: "auto" }}>
-                    <option value="">Choose category…</option>
+                    <option value="">All categories…</option>
                     {data.categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.group} · {c.name}
@@ -73,15 +80,23 @@ export default async function NeedsCategory({ searchParams }: { searchParams: Pr
                       <input type="checkbox" name="suggestRule" /> Suggest rule
                     </label>
                   ) : null}
-                  <Submit className="btn btn-sm btn-primary">Assign</Submit>
+                  <Submit className="btn btn-primary">Assign</Submit>
+                  <Link className="btn" href={`/transactions/${n.source}/${n.txId}`}>
+                    Split or details
+                  </Link>
                 </ActionForm>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <Empty title="Nothing needs a category">New imports and manual entries without a category will appear here.</Empty>
-        )}
-      </Card>
+              </InboxCard>
+            );
+          })}
+        </ul>
+      ) : (
+        <Empty title="All caught up">
+          Nothing needs a category. New imports and manual entries without one will appear here.
+          <Link className="btn" href="/budgets">
+            See this month
+          </Link>
+        </Empty>
+      )}
     </>
   );
 }

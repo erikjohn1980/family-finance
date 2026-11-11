@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { householdMembers, users } from "@/db/schema";
-import { Crumbs, ExportButton, MenuButton, SearchBox, Sidebar, ThemeToggle } from "@/components/shell";
+import { Crumbs, ExportButton, SearchBox, Sidebar, TabBar, ThemeToggle } from "@/components/shell";
 import { Icon } from "@/components/icons";
 import { Toaster } from "@/components/forms";
 import { demoMode, ledgerFor, pageMember } from "@/lib/page";
@@ -60,8 +60,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         />
         <div className="main">
           <header className="topbar">
-            <MenuButton />
             <Crumbs />
+            <Link className="btn btn-ghost only-mobile topbar-search" href="/transactions" aria-label="Search transactions">
+              <Icon name="search" />
+            </Link>
             <div className="topbar-actions">
               <Suspense fallback={<div className="search" style={{ width: 240 }} />}>
                 <SearchBox />
@@ -83,10 +85,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {demoMode() ? (
               <div className="banner banner-demo" role="note">
                 <strong>DEMO DATA</strong>
-                <span>Every amount, account and merchant on this instance is fictional. Do not enter real financial data here.</span>
+                <span>
+                  Everything here is fictional.<span className="hide-md"> Do not enter real financial data on this instance.</span>
+                </span>
               </div>
             ) : null}
-            <div className="form-actions" aria-label="Household members">
+            <div className="form-actions members-row" aria-label="Household members">
               <span className="avatars">
                 {members.map((m) => (
                   <span key={m.email} className="avatar" title={m.name || m.email || ""}>
@@ -99,6 +103,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {children}
           </main>
           <Toaster />
+          <TabBar needs={needs} />
         </div>
       </div>
     </>

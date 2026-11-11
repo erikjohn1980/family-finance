@@ -65,7 +65,7 @@ export type BarSeries = { label: string; color: string; values: number[] };
 export function Bars({ labels, series, title }: { labels: string[]; series: BarSeries[]; title: string }) {
   const W = 640;
   const H = 220;
-  const pad = { l: 56, r: 8, t: 10, b: 28 };
+  const pad = { l: 64, r: 8, t: 12, b: 30 };
   const all = series.flatMap((s) => s.values);
   const max = Math.max(0, ...all);
   const min = Math.min(0, ...all);
@@ -76,11 +76,12 @@ export function Bars({ labels, series, title }: { labels: string[]; series: BarS
   const ticks = [max, (max + min) / 2, min].filter((v, i, a) => a.indexOf(v) === i);
   return (
     <figure style={{ margin: 0 }}>
+      <div className="chart-scroll">
       <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title}>
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} stroke="var(--border)" strokeDasharray={t === 0 ? undefined : "3 4"} />
-            <text x={pad.l - 6} y={y(t) + 4} textAnchor="end" fontSize="10" fill="var(--muted)">
+            <text x={pad.l - 6} y={y(t) + 4} textAnchor="end" fontSize="12" fill="var(--muted)">
               {formatCents(Math.round(t), { whole: true })}
             </text>
           </g>
@@ -96,12 +97,13 @@ export function Bars({ labels, series, title }: { labels: string[]; series: BarS
                 </rect>
               );
             })}
-            <text x={pad.l + gi * groupW + groupW / 2} y={H - 8} textAnchor="middle" fontSize="10" fill="var(--muted)">
+            <text x={pad.l + gi * groupW + groupW / 2} y={H - 8} textAnchor="middle" fontSize="12" fill="var(--muted)">
               {lab}
             </text>
           </g>
         ))}
       </svg>
+      </div>
       <figcaption className="form-actions small" style={{ marginTop: 8 }}>
         {series.map((s) => (
           <span key={s.label} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>

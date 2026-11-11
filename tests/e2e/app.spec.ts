@@ -2,7 +2,8 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 
 const ERIK = "erik@example.test";
 const G = "g@example.test";
-const month = new Date().toISOString().slice(0, 7);
+const today = new Date().toISOString().slice(0, 10);
+const month = today.slice(0, 7);
 const d = (day: number) => `${month}-${String(Math.min(day, new Date().getUTCDate())).padStart(2, "0")}`;
 
 async function login(browser: Browser, email: string, viewport?: { width: number; height: number }): Promise<Page> {
@@ -22,7 +23,7 @@ const CSV = [
   `e3,E2E Checking,${d(1)},-300.00,TRANSFER TO SAVINGS,false,,Transfer`,
   `e4,E2E Checking,${d(1)},-120.00,PAYMENT TO CARD,false,,Card payment`,
   `e5,E2E Checking,${d(1)},20.00,SAMPLE GROCER 4 REFUND,false,,Groceries`,
-  `e6,E2E Checking,${d(1)},-45.00,SAMPLE PHARMACY,true,,Medical`,
+  `e6,E2E Checking,${today},-45.00,SAMPLE PHARMACY,true,,Medical`, // recent: pendings older than 7 days are dropped as stale
   `e7,E2E Checking,${d(1)},-9.99,KATAPULT EVENTS CHARGE,false,,`,
 ].join("\n");
 
@@ -135,6 +136,16 @@ test.describe.serial("Family Finance acceptance", () => {
     await g.goto("/needs-category");
     await expect(g.getByTestId("needs-count")).toHaveText("1");
     await expect(g.getByTestId("pending-count")).toHaveText("1");
+    // One tap on a chip files it; Undo puts it back in the queue.
+    const card = g.locator(".inbox-card").filter({ hasText: "SAMPLE GROCER 4" });
+    await card.getByRole("button", { name: "Groceries" }).click();
+    await expect(g.getByTestId("toast")).toContainText("SAMPLE GROCER 4 → Groceries");
+    await expect(g.getByTestId("needs-count")).toHaveText("0");
+    await g.getByRole("button", { name: "Undo" }).click();
+    await expect(g.getByTestId("needs-count")).toHaveText("1");
+    await expect(card).toBeVisible();
+    // The full list, with an optional rule suggestion, is behind "More…".
+    await card.getByRole("button", { name: "More…" }).click();
     await g.getByLabel("Category for SAMPLE GROCER 4").selectOption({ label: "Food · Groceries" });
     await g.getByRole("checkbox", { name: "Suggest rule" }).check();
     await g.getByRole("button", { name: "Assign" }).click();
@@ -162,6 +173,7 @@ test.describe.serial("Family Finance acceptance", () => {
     const p = await login(browser, ERIK);
     await p.goto("/budgets");
     const row = p.getByRole("listitem").filter({ hasText: "Food · Groceries" });
+    await row.getByText("Set limit").click();
     await row.getByLabel("Monthly limit").fill("400");
     await row.getByRole("button", { name: "Save limit" }).click();
     await expect(p.getByRole("link", { name: /Groceries/ }).first()).toBeVisible();
@@ -264,11 +276,34 @@ test.describe.serial("Family Finance acceptance", () => {
       expect(overflow, `${path} horizontal overflow`).toBeLessThanOrEqual(0);
     }
     await p.goto("/");
-    await p.getByRole("button", { name: "Open navigation" }).click();
+    // Bottom tab bar: every tab is a comfortable touch target.
+    const tabs = p.getByRole("navigation", { name: "Quick navigation" });
+    await expect(tabs).toBeVisible();
+    const tabTargets = [
+      tabs.getByRole("link", { name: "Overview" }),
+      tabs.getByRole("link", { name: /Categorize/ }),
+      tabs.getByRole("link", { name: "Add transaction" }),
+      tabs.getByRole("link", { name: "Transactions" }),
+      tabs.getByRole("button", { name: /More/ }),
+    ];
+    for (const target of tabTargets) {
+      const box = await target.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+    }
+    await tabs.getByRole("link", { name: /Categorize/ }).click();
+    await expect(p).toHaveURL(/\/needs-category/);
+    // "More" opens the full menu; tapping outside closes it.
+    await tabs.getByRole("button", { name: /More/ }).click();
+    await expect(p.getByRole("link", { name: "Budget Limits" })).toBeVisible();
+    await p.getByRole("button", { name: "Close navigation" }).click({ position: { x: 370, y: 300 } });
+    await expect(p.getByRole("link", { name: "Budget Limits" })).not.toBeInViewport();
+    await tabs.getByRole("button", { name: /More/ }).click();
     await p.getByRole("link", { name: "Budget Limits" }).click();
     await expect(p).toHaveURL(/\/budgets/);
-    const box = await p.getByRole("link", { name: "Add transaction" }).boundingBox();
-    expect(box!.height).toBeGreaterThanOrEqual(44);
+    // Inputs are 16px so iOS does not zoom when one is focused.
+    await p.goto("/transactions/new");
+    expect(await p.getByLabel("Amount (USD)").evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
     await p.context().close();
   });
 });

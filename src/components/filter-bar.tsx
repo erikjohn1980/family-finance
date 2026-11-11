@@ -4,11 +4,11 @@ import { useTransition } from "react";
 import { setPref } from "@/app/actions";
 
 const SCOPES: [string, string][] = [
-  ["default", "Household + included business"],
+  ["default", "Default view"],
   ["household", "Household only"],
   ["business", "Business only"],
   ["trust", "Trust"],
-  ["all", "All scopes"],
+  ["all", "Everything"],
 ];
 
 /** Month + scope filters. Changes persist per user (survive reload) and are reflected in the URL. */

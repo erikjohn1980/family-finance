@@ -7,7 +7,7 @@ export function TxList({ lines, categoryName, accountName, empty }: { lines: Eff
   if (!lines.length) return <>{empty ?? <Empty title="No transactions match">Try another month or clear filters.</Empty>}</>;
   return (
     <div className="list" role="list" aria-label="Transactions">
-      <div className="row row-head" aria-hidden>
+      <div className="row row-tx row-head" aria-hidden>
         <span>Date</span>
         <span>Merchant</span>
         <span>Category</span>
@@ -17,7 +17,7 @@ export function TxList({ lines, categoryName, accountName, empty }: { lines: Eff
       {lines.map((l) => {
         const cat = categoryName(l.categoryId);
         return (
-          <Link role="listitem" key={l.key} className="row" href={`/transactions/${l.source}/${l.txId}`}>
+          <Link role="listitem" key={l.key} className="row row-tx" href={`/transactions/${l.source}/${l.txId}`}>
             <span className="small muted">{shortDate(l.date)}</span>
             <span className="cell-main">
               {l.merchant}

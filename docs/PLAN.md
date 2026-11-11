@@ -5,15 +5,16 @@ Status: **MVP built (phases 1–5).** Every default marked **(proposed)** stays 
 Decisions from the owner so far:
 - **Sign-in:** Google, with an invite-only allow-list.
 - **Hosting:** DigitalOcean, either a Droplet with Docker Compose or App Platform.
-- **Code:** a new private GitHub repo. The name is still to be supplied.
-- **Admin:** a personal email. The address is still to be supplied and is configured through `HOUSEHOLD_ADMIN_EMAIL`.
+- **Code:** the private GitHub repo `erikjohn1980/family-finance`.
+- **Admin:** a personal email, configured through `HOUSEHOLD_ADMIN_EMAIL` on the server (not stored in the repo).
+- **Nov 11:** keep this app rather than rebuilding to the "Household Budget Inbox" spec; keep Google sign-in and DigitalOcean; no Katapult at all; make it work well on phones (bottom tab bar, one-tap category chips with undo).
 
 ## 0. Guardrails (apply to every phase)
 
 | Rule | How it is enforced |
 | --- | --- |
 | Scope: OAL, Cue Flow, personal finances only | `Account.scope` is one of `household`, `business`, `trust`. Business sections for OAL and Cue Flow start as **empty scoped sections**, with no invented revenue. |
-| Katapult excluded | No Katapult accounts and no Katapult charges. The import pipeline has a deny-list hook, and the seed and fixtures contain none. The only Katapult-related row is one `NetWorthManualAsset`, "51% share of cleared Katapult cash", whose amount is **null until the owner enters it**. |
+| Katapult excluded entirely (owner decision, Nov 11) | No Katapult accounts, charges or assets. The import pipeline drops them, the app refuses accounts, manual entries and assets that name Katapult, and the seed and fixtures contain none. The earlier 51% stake placeholder was removed. |
 | Cue Flow unread | No adapter, connector or importer reads Cue Flow data. A `CUE_FLOW_AUTHORIZED` flag defaults to `false`, and the UI shows "Not authorized" for it. |
 | Stripe | Not referenced anywhere in the code or dependencies. |
 | Read-only bank access | `BankImportAdapter` only has `listAccounts`, `listTransactions` and `health`. There are no payment, transfer, refund or settings methods, and a type-level test keeps it that way. |
@@ -47,7 +48,7 @@ The model follows the spec. Additions are marked with a `+`.
 - `income_expectation`: label, amount, cadence, scope, active.
 - `recurring_bill`: label, amount_min, amount_max, match_rules jsonb (merchant pattern, account, day window), active.
 - `goal`: kind `save|debt`, title, target_amount, target_date, linked_account_ids, funded_amount_manual.
-- `net_worth_manual_asset`: label, amount (nullable), notes. This includes the single 51% Katapult stake row, with an application constraint that allows at most one flagged row.
+- `net_worth_manual_asset`: label, amount (nullable), notes. Owner-entered assets only.
 - `merchant_rule`: pattern, category_id, `status` (`suggested|confirmed`), confirmed_by, confirmed_at. Only confirmed rules are applied.
 - `audit_event`: actor_id, entity, entity_id, action, before jsonb, after jsonb, at. A shared `withAudit()` helper writes this row in the same database transaction as every write.
 - `import_batch`: adapter, checksum (UNIQUE), file_name, started_at, finished_at, stats jsonb.
@@ -63,7 +64,7 @@ The model follows the spec. Additions are marked with a `+`.
 - **Income:** expected comes from `income_expectation` for the month, and deposited comes from income-kind rows. A missing deposit is shown as "not yet deposited". It never means the institution is disconnected.
 - **Pending→posted matching:** a pending row matches a posted row on the same account when the amount is within ±$1 or 20% (tips) and the merchant is similar. The window is 0–7 days (proposed). Overrides carry over to the posted twin. A pending row with no twin inside the window is marked stale and dropped from totals.
 - **Sweep cash:** `cash = available + |newest unmatched overnight sweep purchase|`. The sweep component is 0 if a pending redemption matches that purchase, and paired purchase/redemption rows are ignored. This lives in the adapter layer and is covered by unit tests.
-- **Net worth:** assets (cash, investments, real estate, vehicles, manual assets including the 51% stake once it has a value) minus liabilities. Liabilities are stored as positive amounts and subtracted. An investment value comes only from an import or a manual balance with an `as_of` date.
+- **Net worth:** assets (cash, investments, real estate, vehicles, owner-entered manual assets) minus liabilities. Liabilities are stored as positive amounts and subtracted. An investment value comes only from an import or a manual balance with an `as_of` date.
 - **Cash view:** checking and savings only. It is a separate KPI from net worth.
 - **Budget limit:** posted spend for a category in a month is compared with its limit. Rollover applies only when `rollover = true`.
 - **Goals:** progress is the linked balance or the manual funded amount, divided by the target. Planning UI only.
@@ -112,4 +113,4 @@ Each stage ends with its acceptance tests passing, and I report the test output 
 ## 8. Open owner inputs
 
 These don't block building. The UI collects them, and each shows as empty or "proposed" until it is set:
-goal targets, which business cash accounts appear in the overview, whether imported paychecks feed the budget, rollover policy, and the 51% asset value.
+goal targets, which business cash accounts appear in the overview, whether imported paychecks feed the budget, and rollover policy.

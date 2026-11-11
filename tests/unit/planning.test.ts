@@ -57,11 +57,11 @@ describe("net worth and cash", () => {
     { id: "b", name: "Brokerage", kind: "brokerage" as const, balanceCents: null },
   ];
   it("liabilities are stored positive and subtracted; null balances are reported missing, not guessed", () => {
-    const nw = netWorth(accounts, [{ label: "51% stake", amountCents: null }, { label: "Car", amountCents: 500000 }]);
+    const nw = netWorth(accounts, [{ label: "Cabin (no value yet)", amountCents: null }, { label: "Car", amountCents: 500000 }]);
     expect(nw.liabilitiesCents).toBe(30000);
     expect(nw.assetsCents).toBe(100000 + 70000 + 500000);
     expect(nw.netCents).toBe(100000 + 70000 + 500000 - 30000);
-    expect(nw.missing).toEqual(["Brokerage", "51% stake"]);
+    expect(nw.missing).toEqual(["Brokerage", "Cabin (no value yet)"]);
   });
   it("cash view is checking/savings only with sweep correction", () => {
     expect(cashView(accounts).cashCents).toBe(170000);
