@@ -119,7 +119,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
           {needs.length ? (
             <div className="list">
               {needs.slice(0, 5).map((n) => (
-                <Link key={n.txId} className="row" style={{ gridTemplateColumns: "100px minmax(0,1fr) auto" }} href={`/transactions/${n.source}/${n.txId}`}>
+                <Link key={n.txId} className="row row-tx" style={{ gridTemplateColumns: "100px minmax(0,1fr) auto" }} href={`/transactions/${n.source}/${n.txId}`}>
                   <span className="small muted">{shortDate(n.date)}</span>
                   <span className="cell-main">
                     {n.merchant} {n.pending ? <Pill tone="pend">Bank-pending</Pill> : null}

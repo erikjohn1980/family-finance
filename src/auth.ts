@@ -51,6 +51,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
     verificationTokensTable: verificationTokens,
   }),
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 14 },
+  // Dev-only preview pane support: the pane may embed the app cross-site. Never active in production.
+  ...(process.env.PREVIEW_MODE === "true" && process.env.NODE_ENV !== "production"
+    ? { cookies: { sessionToken: { options: { httpOnly: true, sameSite: "none" as const, secure: true, path: "/", partitioned: true } } } }
+    : {}),
   trustHost: true,
   pages: { signIn: "/login", error: "/login" },
   providers,

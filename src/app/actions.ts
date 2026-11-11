@@ -31,7 +31,7 @@ import { HttpError, requireActionMember, requireAdmin, type MemberContext } from
 import { parseMoneyToCents } from "@/lib/money";
 import { isValidDate } from "@/lib/dates";
 import { importCsv } from "@/lib/import/csvImport";
-import { KATAPULT_STAKE_KEY, isExcludedByPolicy } from "@/lib/policy";
+import { isExcludedByPolicy } from "@/lib/policy";
 import { normEmail } from "@/lib/household";
 import { billMatches } from "@/lib/calc/planning";
 import { rulePatternFor } from "@/lib/rules";
@@ -375,7 +375,7 @@ export async function saveAccount(_: ActionResult, fd: FormData): Promise<Action
     const ctx = await requireActionMember();
     const id = opt(fd, "id");
     const name = req(fd, "name", "Name").slice(0, 80);
-    if (isExcludedByPolicy(name)) throw new UserError("Katapult accounts are excluded. Use the 51% cleared-cash stake in Settings instead.");
+    if (isExcludedByPolicy(name)) throw new UserError("Katapult accounts are excluded from Family Finance.");
     const kind = oneOf(s(fd, "kind"), ACCOUNT_KINDS, "Kind");
     const scope = oneOf(s(fd, "scope") || "household", SCOPES, "Scope");
     const balance = money(fd, "balance", "Balance");
@@ -595,14 +595,13 @@ export async function saveManualAsset(_: ActionResult, fd: FormData): Promise<Ac
       if (id) {
         const [before] = await tx.select().from(netWorthManualAssets).where(and(eq(netWorthManualAssets.id, id), eq(netWorthManualAssets.householdId, ctx.householdId)));
         if (!before) throw new UserError("Asset not found");
-        if (before.systemKey === KATAPULT_STAKE_KEY && ctx.role !== "admin") throw new HttpError(403, "Only the owner can set the 51% stake value");
-        const label = before.systemKey ? before.label : req(fd, "label", "Label").slice(0, 80);
-        if (!before.systemKey && isExcludedByPolicy(label)) throw new UserError("Only the single 51% cleared-cash stake may reference Katapult.");
+        const label = req(fd, "label", "Label").slice(0, 80);
+        if (isExcludedByPolicy(label)) throw new UserError("Katapult is excluded from Family Finance.");
         const [after] = await tx.update(netWorthManualAssets).set({ label, amountCents: amount, notes, asOf: new Date() }).where(eq(netWorthManualAssets.id, id)).returning();
         await audit(tx, { householdId: ctx.householdId, actorId: ctx.userId, entity: "net_worth_manual_asset", entityId: id, action: "update", before, after });
       } else {
         const label = req(fd, "label", "Label").slice(0, 80);
-        if (isExcludedByPolicy(label)) throw new UserError("Only the single 51% cleared-cash stake may reference Katapult.");
+        if (isExcludedByPolicy(label)) throw new UserError("Katapult is excluded from Family Finance.");
         const [row] = await tx.insert(netWorthManualAssets).values({ householdId: ctx.householdId, label, amountCents: amount, notes, asOf: amount !== null ? new Date() : null }).returning();
         await audit(tx, { householdId: ctx.householdId, actorId: ctx.userId, entity: "net_worth_manual_asset", entityId: row.id, action: "create", after: row });
       }
@@ -619,7 +618,6 @@ export async function deleteManualAsset(_: ActionResult, fd: FormData): Promise<
     await getDb().transaction(async (tx) => {
       const [before] = await tx.select().from(netWorthManualAssets).where(and(eq(netWorthManualAssets.id, id), eq(netWorthManualAssets.householdId, ctx.householdId)));
       if (!before) throw new UserError("Asset not found");
-      if (before.systemKey) throw new UserError("The 51% stake slot cannot be deleted; clear its value instead.");
       await tx.delete(netWorthManualAssets).where(eq(netWorthManualAssets.id, id));
       await audit(tx, { householdId: ctx.householdId, actorId: ctx.userId, entity: "net_worth_manual_asset", entityId: id, action: "delete", before });
     });
@@ -706,4 +704,59 @@ export async function removeMember(_: ActionResult, fd: FormData): Promise<Actio
 
 export async function signOutAction() {
   await signOut({ redirectTo: "/login" });
+}
+
+// ---------- one-tap categorize from the Needs-category queue (with undo) ----------
+export async function quickCategorize(source: "bank" | "manual", txId: string, categoryId: string): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireActionMember();
+    const cat = await ownedCategory(ctx, categoryId);
+    if (!cat) throw new UserError("Choose a category");
+    if (source === "bank") {
+      const t = await ownedBankTx(ctx, txId);
+      await getDb().transaction(async (tx) => {
+        const [o] = await tx
+          .insert(ledgerOverrides)
+          .values({ householdId: ctx.householdId, bankTxId: t.id, categoryId, splitGroup: crypto.randomUUID(), actorId: ctx.userId })
+          .returning();
+        await audit(tx, { householdId: ctx.householdId, actorId: ctx.userId, entity: "bank_transaction", entityId: t.id, action: "categorize", before: null, after: o });
+      });
+    } else if (source === "manual") {
+      await getDb().transaction(async (tx) => {
+        const [before] = await tx.select().from(manualTransactions).where(and(eq(manualTransactions.id, txId), eq(manualTransactions.householdId, ctx.householdId), isNull(manualTransactions.deletedAt)));
+        if (!before) throw new UserError("Transaction not found");
+        const [after] = await tx.update(manualTransactions).set({ categoryId, updatedAt: new Date() }).where(eq(manualTransactions.id, txId)).returning();
+        await audit(tx, { householdId: ctx.householdId, actorId: ctx.userId, entity: "manual_transaction", entityId: txId, action: "categorize", before, after });
+      });
+    } else throw new UserError("Unknown transaction type");
+    revalidateAll();
+    return cat.name;
+  });
+}
+
+/** Undo a one-tap pick: the item returns to the Needs-category queue. Bank rows stay untouched; the undo is one more override. */
+export async function undoQuickCategorize(source: "bank" | "manual", txId: string): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireActionMember();
+    if (source === "bank") {
+      const t = await ownedBankTx(ctx, txId);
+      await getDb().transaction(async (tx) => {
+        const prev = await tx.select().from(ledgerOverrides).where(eq(ledgerOverrides.bankTxId, t.id));
+        const [o] = await tx
+          .insert(ledgerOverrides)
+          .values({ householdId: ctx.householdId, bankTxId: t.id, categoryId: null, splitGroup: crypto.randomUUID(), actorId: ctx.userId })
+          .returning();
+        await audit(tx, { householdId: ctx.householdId, actorId: ctx.userId, entity: "bank_transaction", entityId: t.id, action: "undo_categorize", before: prev.sort((a, b) => +b.createdAt - +a.createdAt)[0] ?? null, after: o });
+      });
+    } else if (source === "manual") {
+      await getDb().transaction(async (tx) => {
+        const [before] = await tx.select().from(manualTransactions).where(and(eq(manualTransactions.id, txId), eq(manualTransactions.householdId, ctx.householdId), isNull(manualTransactions.deletedAt)));
+        if (!before) throw new UserError("Transaction not found");
+        const [after] = await tx.update(manualTransactions).set({ categoryId: null, updatedAt: new Date() }).where(eq(manualTransactions.id, txId)).returning();
+        await audit(tx, { householdId: ctx.householdId, actorId: ctx.userId, entity: "manual_transaction", entityId: txId, action: "undo_categorize", before, after });
+      });
+    } else throw new UserError("Unknown transaction type");
+    revalidateAll();
+    return "Moved back to Needs category";
+  });
 }

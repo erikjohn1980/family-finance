@@ -7,7 +7,7 @@ import { ActionForm, Submit } from "@/components/forms";
 import { Card, Empty, Money, PageHead, Pill, ProposedTag } from "@/components/ui";
 import { getProviderAdapter } from "@/lib/adapters/types";
 import { centsToDecimalString } from "@/lib/money";
-import { KATAPULT_STAKE_KEY, cueFlowAuthorized } from "@/lib/policy";
+import { cueFlowAuthorized } from "@/lib/policy";
 import { ledgerFor, pageMember } from "@/lib/page";
 
 export const metadata = { title: "Settings" };
@@ -27,8 +27,7 @@ export default async function Settings() {
   const proposed = data.categories.filter((c) => c.proposed).length;
   const suggested = rules.filter(({ r }) => !r.confirmedAt && !r.rejectedAt);
   const confirmed = rules.filter(({ r }) => r.confirmedAt);
-  const stake = assets.find((a) => a.systemKey === KATAPULT_STAKE_KEY);
-  const otherAssets = assets.filter((a) => !a.systemKey);
+  const otherAssets = assets;
 
   return (
     <>
@@ -53,7 +52,7 @@ export default async function Settings() {
             </a>
           </div>
           <p className="small muted" style={{ marginTop: 8 }}>
-            Imports are idempotent: a re-uploaded file or a repeated external_id is skipped, and existing rows are never changed. Rows naming Katapult accounts or charges are excluded by policy.
+            Imports are idempotent: a re-uploaded file or a repeated external_id is skipped, and existing rows are never changed. Rows naming Katapult accounts or charges are always excluded.
           </p>
         </ActionForm>
         {batches.length ? (
@@ -137,33 +136,6 @@ export default async function Settings() {
       </Card>
 
       <Card title="Net-worth manual assets">
-        {stake ? (
-          <div className="mini" style={{ marginBottom: 12 }}>
-            <div className="mini-top">
-              <span>Single allowed Katapult value</span>
-              {stake.amountCents === null ? <Pill tone="plan">Awaiting owner value</Pill> : <Pill tone="ok">Owner-entered</Pill>}
-            </div>
-            <strong>{stake.label}</strong>
-            <span className="mini-amount">{stake.amountCents === null ? "Not set" : <Money cents={stake.amountCents} />}</span>
-            <p className="small muted">The owner supplies this value; nothing is calculated or read from any Katapult account. Leave it blank to keep it out of net worth.</p>
-            {isAdmin ? (
-              <ActionForm action={saveManualAsset} className="form-actions">
-                <input type="hidden" name="id" value={stake.id} />
-                <label style={{ flex: "1 1 160px" }}>
-                  Value
-                  <input name="amount" inputMode="decimal" defaultValue={stake.amountCents !== null ? centsToDecimalString(stake.amountCents) : ""} />
-                </label>
-                <label style={{ flex: "2 1 220px" }}>
-                  Notes
-                  <input name="notes" defaultValue={stake.notes ?? ""} />
-                </label>
-                <Submit className="btn btn-sm">Save value</Submit>
-              </ActionForm>
-            ) : (
-              <p className="small muted">Only the owner can set this value.</p>
-            )}
-          </div>
-        ) : null}
         {otherAssets.map((a) => (
           <div key={a.id} className="mini" style={{ marginBottom: 10 }}>
             <ActionForm action={saveManualAsset} className="form-actions">

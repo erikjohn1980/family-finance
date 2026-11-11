@@ -52,6 +52,8 @@ export function Sidebar({ counts, footer }: { counts: Record<string, number>; fo
     if (open) ref.current?.querySelector<HTMLElement>("a")?.focus();
   }, [open]);
   return (
+    <>
+    {open ? <button type="button" className="nav-backdrop" aria-label="Close navigation" onClick={() => setOpen(false)} /> : null}
     <nav ref={ref} className="sidebar" data-open={open} aria-label="Main" id="sidebar">
       <div className="brand">
         <span className="brand-mark" aria-hidden>
@@ -78,16 +80,51 @@ export function Sidebar({ counts, footer }: { counts: Record<string, number>; fo
         <Icon name="settings" />
         Settings
       </Link>
+      <Link href="/share" className="nav-link only-mobile" aria-current={isActive(path, "/share") ? "page" : undefined}>
+        <Icon name="share" />
+        Share
+      </Link>
       <div className="sidebar-foot">{footer}</div>
     </nav>
+    </>
   );
 }
 
-export function MenuButton() {
+/** Phone navigation: thumb-reachable tabs. "More" opens the full menu. */
+export function TabBar({ needs }: { needs: number }) {
+  const path = usePathname();
+  const tab = (href: string, label: string, icon: string, badge?: number) => (
+    <Link href={href} className="tab" aria-current={isActive(path, href) ? "page" : undefined} aria-label={badge ? `${label}, ${badge} items` : label}>
+      <span className="tab-icon">
+        <Icon name={icon} />
+        {badge ? <span className="tab-badge">{badge > 99 ? "99+" : badge}</span> : null}
+      </span>
+      <span className="tab-label">{label}</span>
+    </Link>
+  );
   return (
-    <button type="button" className="btn btn-ghost menu-btn" aria-controls="sidebar" aria-label="Open navigation" onClick={() => window.dispatchEvent(new Event("ff:toggle-nav"))}>
-      <Icon name="menu" />
-    </button>
+    <nav className="tabbar" aria-label="Quick navigation">
+      {tab("/", "Overview", "overview")}
+      {tab("/needs-category", "Categorize", "tag", needs)}
+      <Link href="/transactions/new" className="tab tab-add" aria-label="Add transaction" aria-current={path === "/transactions/new" ? "page" : undefined}>
+        <span className="tab-plus">
+          <Icon name="plus" />
+        </span>
+        <span className="tab-label">Add</span>
+      </Link>
+      <Link href="/transactions" className="tab" aria-label="Transactions" aria-current={path.startsWith("/transactions") && path !== "/transactions/new" ? "page" : undefined}>
+        <span className="tab-icon">
+          <Icon name="list" />
+        </span>
+        <span className="tab-label">Transactions</span>
+      </Link>
+      <button type="button" className="tab" aria-controls="sidebar" aria-label="More: open full menu" onClick={() => window.dispatchEvent(new Event("ff:toggle-nav"))}>
+        <span className="tab-icon">
+          <Icon name="menu" />
+        </span>
+        <span className="tab-label">More</span>
+      </button>
+    </nav>
   );
 }
 

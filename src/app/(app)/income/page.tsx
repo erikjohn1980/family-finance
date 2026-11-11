@@ -127,7 +127,7 @@ export default async function Income({ searchParams }: { searchParams: Promise<R
               </select>
             </label>
             <label>
-              Known pay date (for weekly/biweekly/quarterly/annual)
+              Known pay date (needed unless monthly or twice a month)
               <input type="date" name="anchorDate" />
             </label>
             <label>

@@ -57,12 +57,15 @@ export default async function Budgets({ searchParams }: { searchParams: Promise<
       <Card title="Categories without a limit">
         <ul className="list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
           {without.map(({ c, st }) => (
-            <li key={c.id} className="row" style={{ gridTemplateColumns: "minmax(0,1fr) 120px minmax(0,2fr)" }}>
+            <li key={c.id} className="row" style={{ gridTemplateColumns: "minmax(0,1.4fr) 120px minmax(0,2fr)", alignItems: "start" }}>
               <Link href={`/budgets/${c.id}?month=${f.month}&scope=${f.scope}`} className="cell-main">
                 {c.group} · {c.name}
               </Link>
               <Money cents={st.spentCents} className="amt" />
-              <LimitForm c={c} />
+              <details className="details">
+                <summary className="small muted">Set limit</summary>
+                <LimitForm c={c} />
+              </details>
             </li>
           ))}
         </ul>

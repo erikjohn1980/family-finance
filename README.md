@@ -5,7 +5,7 @@ A private household ledger for two invited members, Erik and G. It covers OAL, C
 - **Read-only by design.** The app never moves money, pays bills, issues refunds, or changes bank settings.
 - **Invite-only.** Sign-in is with Google, limited to an allow-list. There are no public share links.
 - **Imported bank rows are immutable.** A database trigger enforces this. Categories, memos and splits live in an append-only override layer, and every write is audited.
-- **Katapult is excluded.** Katapult accounts and charges are filtered at import. The only related value is the owner-entered "51% share of cleared Katapult cash" net-worth asset, and it stays empty until the owner sets it.
+- **Katapult is excluded entirely.** Katapult accounts and charges are filtered at import, and accounts, manual entries and assets that name Katapult are refused.
 - **Cue Flow stays unread** until `CUE_FLOW_AUTHORIZED=true` is set by the owner. Stripe is not used anywhere.
 
 See [`docs/PLAN.md`](docs/PLAN.md) for the full plan and semantics, and [`docs/csv-format.md`](docs/csv-format.md) for the CSV column map.
@@ -42,6 +42,18 @@ The seed refuses to run when:
 - the database is non-local, unless you also set `DEMO_SEED_CONFIRM=<dbname>`
 
 Never load real financial data into a demo instance.
+
+### Live preview behind a proxy
+
+```bash
+PREVIEW_MODE=true DEMO_MODE=true AUTH_TEST_MODE=true npm run dev
+```
+
+`PREVIEW_MODE` lets the dev server be viewed through a preview proxy or pane: it accepts dev requests from other hosts, allows framing, and marks the session cookie for cross-site use. It is ignored when `NODE_ENV=production`, so it can't weaken a deployed instance. Use it only with demo data.
+
+## Phone use
+
+The layout is phone-first below 900 px: a bottom tab bar (Overview, Categorize, Add, Transactions, More), one-tap category chips with Undo in the Needs category queue, and 16 px inputs so iOS doesn't zoom. Both of you can add it to the home screen from the browser's share menu.
 
 ## Tests
 
@@ -115,5 +127,4 @@ These are collected in the UI, and each stays empty or marked **Proposed** until
 - which business cash accounts appear in the household overview
 - whether imported paychecks feed the budget
 - rollover policy (default off)
-- the 51% stake value
 - approval of the proposed default categories and design tokens

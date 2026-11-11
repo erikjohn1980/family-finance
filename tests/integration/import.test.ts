@@ -71,15 +71,14 @@ describe("CSV import (Postgres)", () => {
     expect((await db.select().from(goals)).length).toBe(1);
   });
 
-  it("excludes Katapult accounts and charges; keeps exactly one empty 51% stake slot", async () => {
+  it("excludes Katapult accounts and charges; no Katapult asset exists", async () => {
     const { db, h, erik } = await setupHousehold();
     const text = [HEADER, "k1,Katapult Operating,2026-10-01,-10.00,Vendor,false,", "k2,Demo Checking,2026-10-01,-10.00,KATAPULT EVENTS LLC,false,", "ok,Demo Checking,2026-10-01,-1.00,Kiosk,false,"].join("\n");
     const r = await importCsv(db, { householdId: h.id, actorId: erik.id, fileName: "k.csv", text });
     expect(r).toMatchObject({ inserted: 1, excludedByPolicy: 2 });
-    const stakes = await db.select().from(netWorthManualAssets).where(eq(netWorthManualAssets.householdId, h.id));
-    expect(stakes).toHaveLength(1);
-    expect(stakes[0].amountCents).toBeNull();
-    await expect(db.insert(netWorthManualAssets).values({ householdId: h.id, label: "dup", systemKey: stakes[0].systemKey })).rejects.toThrow();
+    expect(await db.select().from(netWorthManualAssets).where(eq(netWorthManualAssets.householdId, h.id))).toHaveLength(0);
+    const rows = await db.select().from(bankTransactions);
+    expect(rows.some((t) => /katapult/i.test(t.merchantRaw))).toBe(false);
   });
 
   it("rejects files missing required columns and reports bad rows", async () => {

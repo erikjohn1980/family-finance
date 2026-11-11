@@ -366,7 +366,7 @@ export const netWorthManualAssets = pgTable(
     /** Null until the owner supplies a value. Never invented. */
     amountCents: cents("amount_cents"),
     notes: text("notes"),
-    /** "katapult_51pct_cleared_cash" marks the single allowed Katapult stake row. */
+    /** Reserved for app-managed rows. Currently unused. */
     systemKey: text("system_key"),
     asOf: timestamp("as_of", { withTimezone: true }),
     createdAt: createdAt(),
